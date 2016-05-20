@@ -1,0 +1,10 @@
+{
+  "port": 8080,
+  "database": {
+    "path": "db/data.db"
+  },
+  "defaultUser": {
+    "name": "admin",
+    "password": "admin"
+  }
+}

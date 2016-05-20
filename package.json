@@ -1,0 +1,18 @@
+{
+  "name": "Blease",
+  "version": "0.1.0",
+  "description": "BDD Requirement Management",
+  "main": "index.js",
+  "man": "./man/doc.1",
+  "scripts": {
+    "start": "node ./index.js",
+    "debug": "node ./index.js develop"
+  },
+  "repository": "https://github.com/stephanbruny/blease.git",
+  "licence": "GPLv3",
+  "dependencies": {
+    "koa": "^1.2.0",
+    "koa-static": "^2.0.0",
+    "nedb": "^1.8.0"
+  }
+}
