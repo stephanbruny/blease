@@ -9,9 +9,10 @@
     "debug": "node ./index.js develop"
   },
   "repository": "https://github.com/stephanbruny/blease.git",
-  "licence": "GPLv3",
+  "license": "GPLv3",
   "dependencies": {
     "koa": "^1.2.0",
+    "koa-bodyparser": "^2.2.0",
     "koa-static": "^2.0.0",
     "nedb": "^1.8.0"
   }
