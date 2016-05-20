@@ -48,7 +48,20 @@
     panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, 'Page not found'));
     var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
     panelBody.appendChild(document.createTextNode('Sorry, the page you look for does not exist.'));
+    var panelFooter = panel.appendChild(_utils.create('div', {class: 'panel-footer'}));
+    var backBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Back'));
+    backBtn.onclick = function() {
+      goto(parent, lastRoute);
+      return false;
+    }
     parent.appendChild(panel);
+  }
+
+  function navigationButtonOnClick(parent, route) {
+    return function() {
+      goto(parent, route);
+      return false;
+    }
   }
 
   var buildIndex = function(parent) {
@@ -56,11 +69,13 @@
     var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
     panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, 'Blease - Requirements'));
     var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
-    var btn = panelBody.appendChild(_utils.create('button', {class: 'btn'}, 'Create Requirement'));
-    btn.onclick = function() {
-      goto(parent, 'create');
-      return false;
-    }
+    var btnGroup = panelBody.appendChild(_utils.create('div', {class: 'btn-group'}));
+    var btn = btnGroup.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Create Requirement'));
+    btn.onclick = navigationButtonOnClick(parent, 'create');
+    var btnCategory = btnGroup.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Create Category'));
+    btnCategory.onclick = navigationButtonOnClick(parent, 'category');
+    var btnProject= btnGroup.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Create Project'));
+    btnProject.onclick = navigationButtonOnClick(parent, 'project');
     var tableHeader = {
       _id: { name: 'ID' },
       title: { name: 'Title' },
@@ -162,6 +177,15 @@
     return li;
   }
 
+  function onSaveButtonClick(parent, form, delegates, backRoute) {
+    return function() {
+      _utils.ajaxPost(form, delegates, function(res) {
+        goto(parent, backRoute || 'index');
+      });
+      return false;
+    }
+  }
+
   function buildCreateForm(parent, options) {
     options = options || {};
     var panel = _utils.create('div', {class: 'panel panel-primary'});
@@ -174,10 +198,12 @@
     }
     form.appendChild(_utils.create('input', {type: 'hidden', name: 'status', id: 'status', value: options.status || 'New'}));
     form.appendChild(_utils.create('h3', {}, 'Info'));
+
     form.appendChild(createFormGroup({name: 'title', label: 'Requirement Title', placeholder: 'Title', value: options.title ? options.title : null}));
     form.appendChild(createFormGroup({name: 'details', label: 'Details', placeholder: 'Details...', value: options.details ? options.details : null}));
     form.appendChild(_utils.create('h3', {}, 'Things'));
     var thingList = form.appendChild(_utils.create('div', {class: 'form-group'}));
+
 
     panelBody.appendChild(form);
     form.appendChild(_utils.create('h5', {}, 'Add new thing'))
@@ -199,6 +225,33 @@
         thingList.appendChild(addThingInput(options.tests[i]));
       }
     }
+    form.appendChild(_utils.create('h3', {}, 'Options'));
+    var categoryInput = form.appendChild(_utils.create('input', {type: 'hidden', name: 'category', id: 'category', value: options.category || null}));
+    function onSelectCategory(cat) {
+      return function() {
+        categoryInput.value = cat._id;
+        categoryButtonText.innerHTML = cat.title;
+        return false;
+      }
+    }
+    var buttonGroup = form.appendChild(_utils.create('div', {class: 'btn-group'}));
+    var categoryButton = buttonGroup.appendChild(_utils.create('button', {
+      class: 'btn btn-default dropdown-toggle',
+      "data-toggle": "dropdown", "aria-haspopup":"true", "aria-expanded":"false"
+    }));
+    var categoryButtonText = categoryButton.appendChild(_utils.create('span', {}, options.category || 'Choose category'));
+    var categoryDropDown = buttonGroup.appendChild(_utils.create('ul', {class: 'dropdown-menu'}));
+    categoryButton.appendChild(_utils.create('span', { class: 'caret' }));
+    _utils.sendRpc('category.list', {}, function(res) {
+      for (var i = 0; i < res.length; i++) {
+        var li = categoryDropDown.appendChild(_utils.create('li', {}));
+        var cat = li.appendChild(_utils.create('a', {}, res[i].title));
+        if (options.category && res[i]._id === options.category) {
+          categoryButtonText.innerHTML = res[i].title;
+        }
+        cat.onclick = onSelectCategory(res[i]);
+      }
+    });
     var panelFooter = panel.appendChild(_utils.create('div', {class: 'panel-footer'}));
     var backBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Back'));
     backBtn.onclick = function() {
@@ -224,10 +277,32 @@
     parent.appendChild(panel);
   }
 
+  function buildCategoryForm(parent, options) {
+    options = options || {};
+    var panel = _utils.create('div', {class: 'panel panel-primary'});
+    var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
+    panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, !options.title ? 'Blease - Create new category' : 'Edit Category - ' + options.title));
+    var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
+    var form = _utils.create('form', {action: options._id ? 'category.update' : 'category.create', class: 'form'});
+    form.appendChild(createFormGroup({name: 'title', label: 'Category Title', placeholder: 'Title', value: options.title ? options.title : null}));
+    form.appendChild(createFormGroup({name: 'description', label: 'Description', placeholder: 'Description', value: options.description ? options.description : null}));
+    var panelFooter = panel.appendChild(_utils.create('div', {class: 'panel-footer'}));
+    var backBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Back'));
+    backBtn.onclick = function() {
+      goto(parent, lastRoute);
+      return false;
+    }
+    var saveBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-success'}, 'Save'));
+    saveBtn.onclick = onSaveButtonClick(parent, form, {});
+    panelBody.appendChild(form);
+    parent.appendChild(panel);
+  }
+
   var routes = {
     login: buildLoginForm,
     index: buildIndex,
     create: buildCreateForm,
+    category: buildCategoryForm,
     notFound: notFound
   }
 

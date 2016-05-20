@@ -1,10 +1,5 @@
 'use strict';
 module.exports = function(db) {
-  let getTests = it => it.map(it => ({
-    title: it,
-    complexity: 1
-  }));
-
   return {
     create: params => new Promise((resolve, reject) => {
       var item = params;
