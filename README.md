@@ -5,6 +5,8 @@ It supports principles of agile development.
 
 Blease transforms requirements into Mocha Unit-Tests in BDD - style (that's the name...Behavioral Please).
 
+![List View](https://raw.githubusercontent.com/stephanbruny/blease/master/public/screenshots/list.png)
+
 ## Requirement
 
 A requirement is a set of "things" (or checklist) to assemble a feature or other requirement of a software product.  
