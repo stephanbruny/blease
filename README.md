@@ -37,6 +37,8 @@ A tester would insert a bug and so on...
 
 # Development
 
+**Warning** State of Development is really early. Also the UI-Code is bearly readable.
+
 Blease is written in JavaScript based on NodeJS.
 
 ## Core
