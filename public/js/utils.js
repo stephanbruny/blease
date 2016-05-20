@@ -122,11 +122,9 @@
     for (var i = 0; i < model.length; i++) {
       var tr = create('tr');
       for (var key in headDelegate) {
-        if (model[i][key]) {
-          var td = create('td');
-          td.appendChild(headDelegate[key].delegate(model[i]));
-          tr.appendChild(td);
-        }
+        var td = create('td');
+        td.appendChild(headDelegate[key].delegate(model[i]));
+        tr.appendChild(td);
       }
       tbody.appendChild(tr);
     }
@@ -206,16 +204,27 @@
         node.removeChild(node.firstChild);
       }
     },
-    ajaxPost: function (form, callback, onError) {
+    ajaxPost: function (form, delegates, callback, onError) {
       onError = onError || function(err) { console.error(err); }
       var url = form.getAttribute('action');
 
       var formElements = Array.prototype.slice.call(form.elements);
       var params = {};
+      function defaultDelegate(el) { return el.value };
       for (var i = 0; i < formElements.length; i++) {
         var el = formElements[i];
         if (!el.name || el.disabled || !!!el.value) continue;
-        params[el.name] = el.value;
+        var value = delegates[el.name] ? delegates[el.name](el) : el.value;
+        console.log(value)
+        if (params[el.name]) {
+          if (Array.isArray(params[el.name])) {
+            params[el.name].push(value);
+          } else {
+            params[el.name] = [params[el.name], value];
+          }
+          continue;
+        }
+        params[el.name] = value;
       }
 
       return rpcRequest(url, params, callback, onError);

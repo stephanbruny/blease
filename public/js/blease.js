@@ -6,6 +6,14 @@
 
   var lastRoute = 'index';
 
+  var requirementStates = {
+    'New': 'primary',
+    'In Progress': 'info',
+    'Critical': 'danger',
+    'Need details': 'warning',
+    'Completed': 'success'
+  }
+
   function buildLoginForm(parent) {
     var form = _utils.create('form', {id: "login-form", action: "login", class: "form-signin"});
     form.appendChild(_utils.create('h2', {class: "form-signin-heading"}, 'Please sign in'));
@@ -20,7 +28,7 @@
 
     form.onsubmit = function() {
       console.log("Submit")
-      _utils.ajaxPost(form, function(res) {
+      _utils.ajaxPost(form, {}, function(res) {
         if (res && res.ok) {
           _utils.store.set('user', res.user);
           goto(parent, 'index');
@@ -53,6 +61,65 @@
       goto(parent, 'create');
       return false;
     }
+    var tableHeader = {
+      _id: { name: 'ID' },
+      title: { name: 'Title' },
+      crated: { name: "Created", delegate: function(item) {
+        return document.createTextNode(item.created.toLocaleString())
+      } },
+      tests: { name: 'Tests', delegate: function(item) {
+        return document.createTextNode((item.tests ? item.tests.length : 0).toString());
+      } },
+      complexity: { name: 'Complexity', delegate: function(item) {
+        var val = 0;
+        if (item.tests) {
+          for (var i = 0; i < item.tests.length; i++) {
+            val += parseInt(item.tests[i].complexity);
+          }
+        }
+        var el = _utils.create('div', {class: 'center-block text-center'});
+        el.appendChild(_utils.create('span', {class: 'badge'}, val));
+        return el;
+      }},
+      status: {name: 'Status', delegate: function(item) {
+        var el = _utils.create('div', {class: 'btn-group'});
+        var statusButton = el.appendChild(_utils.create('button', {class: 'btn btn-sm dropdown-toggle btn-' + requirementStates[item.status || 'New'], "data-toggle": "dropdown", "aria-haspopup":"true", "aria-expanded":"false"}));
+        var statusText = statusButton.appendChild(_utils.create('span', null, item.status || 'New'));
+        var statusDropDown = el.appendChild(_utils.create('ul', {class: 'dropdown-menu'}));
+        statusButton.appendChild(_utils.create('span', { class: 'caret' }));
+        function setStatusOnClick(key) {
+          return function() {
+            statusButton.setAttribute('class',"btn btn-sm dropdown-toggle btn-" + requirementStates[key]);
+            statusText.innerHTML = key;
+            item.status = key;
+            _utils.sendRpc('requirement.update', {_id: item._id, status: key}, function(res) {
+              console.log(res);
+            })
+          }
+        }
+        for (var key in requirementStates) {
+          var li = statusDropDown.appendChild(_utils.create('li'));
+          var stateBtn = li.appendChild(_utils.create('a', {href: '#', class: 'text-' + requirementStates[key]}, key));
+          stateBtn.onclick = setStatusOnClick(key);
+        }
+        return el;
+      }},
+      controls: {name: 'Options', delegate: function(item) {
+        var list = _utils.create('div', {class: 'btn-group center-block', role: 'group'});
+        var editButton = list.appendChild(_utils.create('button', {class: 'btn btn-sm btn-default'}, 'Edit'));
+        list.appendChild(_utils.create('button', {class: 'btn btn-sm btn-danger'}, 'Remove'));
+        editButton.onclick = function() {
+          goto(parent, 'create', item);
+          return false;
+        }
+        return list;
+      }}
+    };
+    var table = _utils.createTable({class: 'table'}, tableHeader);
+    _utils.sendRpc('requirement.list', {}, function(res) {
+      _utils.addTableData(table, tableHeader, res);
+    });
+    panel.appendChild(table);
     parent.appendChild(panel);
   }
 
@@ -61,54 +128,99 @@
     group.appendChild(_utils.create('label', { for: options.name }, options.label));
     group.appendChild(_utils.create(
       'input' || options.inputElement,
-      { name: options.name, class: 'form-control', id: options.name, placeholder: options.placeholder, type: options.type || 'text'})
+      { name: options.name, class: 'form-control', id: options.name, placeholder: options.placeholder, type: options.type || 'text', required: "required", value: options.value || ''})
     );
     return group;
   }
 
-  function buildCreateForm(parent) {
+  function addThingInput(data) {
+    var li = _utils.create('div');
+    var gr = li.appendChild(_utils.create('div', {class: 'input-group'}));
+    var addOn = gr.appendChild(_utils.create('div', {class: 'input-group-addon'}));
+    addOn.appendChild(_utils.create('i', {class: 'glyphicon glyphicon-check'}))
+    var input = gr.appendChild(_utils.create('input', {type: 'text', value: data.title, class: 'form-control', name: 'tests', 'data-complexity': data.complexity || 1}));
+    var scoreAddOn = gr.appendChild(_utils.create('span', {class: 'input-group-addon'}));
+    var complexityBadge = scoreAddOn.appendChild(_utils.create('span', {class: 'badge'}, data.complexity || 1));
+    var delAddOn = gr.appendChild(_utils.create('span', {class: 'input-group-btn'}));
+    var plusButton = delAddOn.appendChild(_utils.create('button', {class: 'btn btn-default'}));
+    plusButton.appendChild(_utils.create('i', {class: 'glyphicon glyphicon-chevron-up'}))
+    var minusButton = delAddOn.appendChild(_utils.create('button', {class: 'btn btn-default'}));
+    minusButton.appendChild(_utils.create('i', {class: 'glyphicon glyphicon-chevron-down'}))
+    function updateComplexity() {
+      input.setAttribute('data-complexity', data.complexity);
+      complexityBadge.innerHTML = data.complexity;
+      return false;
+    }
+    plusButton.onclick = function() { data.complexity++; return updateComplexity(); }
+    minusButton.onclick = function() { data.complexity > 1 ? data.complexity-- : data.complexity = 1; return updateComplexity(); };
+    var delButton = delAddOn.appendChild(_utils.create('button', {class: 'btn btn-danger', href: '#'}));
+    delButton.appendChild(_utils.create('i', {class: 'glyphicon glyphicon-remove-circle'}))
+    delButton.onclick = function() {
+      li.remove();
+      return false;
+    }
+    return li;
+  }
+
+  function buildCreateForm(parent, options) {
+    options = options || {};
     var panel = _utils.create('div', {class: 'panel panel-primary'});
     var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
-    panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, 'Blease - Create new requirement'));
+    panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, !options.title ? 'Blease - Create new requirement' : 'Edit - ' + options.title));
     var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
-    var form = _utils.create('form', {action: 'requirement.create', class: 'form'})
+    var form = _utils.create('form', {action: options._id ? 'requirement.update' : 'requirement.create', class: 'form'})
+    if (options._id) {
+      form.appendChild(_utils.create('input', {type: 'hidden', name: '_id', id: '_id', value: options._id}));
+    }
+    form.appendChild(_utils.create('input', {type: 'hidden', name: 'status', id: 'status', value: options.status || 'New'}));
     form.appendChild(_utils.create('h3', {}, 'Info'));
-    form.appendChild(createFormGroup({name: 'title', label: 'Requirement Title', placeholder: 'Title'}));
-    form.appendChild(createFormGroup({name: 'details', label: 'Details', placeholder: 'Details...'}));
+    form.appendChild(createFormGroup({name: 'title', label: 'Requirement Title', placeholder: 'Title', value: options.title ? options.title : null}));
+    form.appendChild(createFormGroup({name: 'details', label: 'Details', placeholder: 'Details...', value: options.details ? options.details : null}));
     form.appendChild(_utils.create('h3', {}, 'Things'));
-    var thingList = form.appendChild(_utils.create('ul', {class: 'list-unstyled'}));
+    var thingList = form.appendChild(_utils.create('div', {class: 'form-group'}));
 
     panelBody.appendChild(form);
     form.appendChild(_utils.create('h5', {}, 'Add new thing'))
     var newThingGroup = form.appendChild(_utils.create('div', {class: 'input-group'}));
     var newThingInput = newThingGroup.appendChild(_utils.create('input', { name: 'new-thing', class: 'form-control', placeholder: 'should...'}));
-    var newThingAddOn = newThingGroup.appendChild(_utils.create('div', {class: 'input-group-addon'}));
-    var addNewThingButton = newThingAddOn.appendChild(_utils.create('a', {href: '#', class: 'glyphicon glyphicon-plus-sign text-success'}));
+    var newThingAddOn = newThingGroup.appendChild(_utils.create('span', {class: 'input-group-btn'}));
+    var addNewThingButton = newThingAddOn.appendChild(_utils.create('a', {href: '#', class: 'btn btn-success'}));
+    addNewThingButton.appendChild(_utils.create('i', {class: 'glyphicon glyphicon-plus-sign'}))
     addNewThingButton.onclick = function() {
       var val = newThingInput.value;
       if (val) {
-        var li = thingList.appendChild(_utils.create('li'));
-        var gr = li.appendChild(_utils.create('div', {class: 'input-group'}));
-        var addOn = gr.appendChild(_utils.create('div', {class: 'input-group-addon'}));
-        addOn.appendChild(_utils.create('i', {class: 'glyphicon glyphicon-paperclip'}))
-        gr.appendChild(_utils.create('input', {type: 'text', value: val, class: 'form-control'}));
-        var delAddOn = gr.appendChild(_utils.create('div', {class: 'input-group-addon'}));
-        var delButton = delAddOn.appendChild(_utils.create('a', {class: 'text-danger glyphicon glyphicon-remove-circle', href: '#'}));
-        delButton.onclick = function() {
-          li.remove();
-          return false;
-        }
+        var li = thingList.appendChild(addThingInput({title: val}));
         newThingInput.value = '';
       }
       return false;
     }
+    if (options.tests) {
+      for (var i = 0; i < options.tests.length; i++) {
+        thingList.appendChild(addThingInput(options.tests[i]));
+      }
+    }
     var panelFooter = panel.appendChild(_utils.create('div', {class: 'panel-footer'}));
-    var backBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn'}, 'Back'));
+    var backBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Back'));
     backBtn.onclick = function() {
       goto(parent, lastRoute);
       return false;
     }
     var saveBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-success'}, 'Save'));
+    saveBtn.onclick = function() {
+      _utils.ajaxPost(form, {
+        tests: function(el) {
+          return {
+            title: el.value,
+            complexity: parseInt(el.getAttribute('data-complexity'))
+          }
+        }
+      },
+      function(res) {
+        console.log(res);
+        goto(parent, 'index');
+      });
+      return false;
+    }
     parent.appendChild(panel);
   }
 
@@ -119,11 +231,11 @@
     notFound: notFound
   }
 
-  function goto(parent, route) {
-    _utils.store.set('lastRoute', route);
+  function goto(parent, route, options) {
+    _utils.store.set('lastRoute', { path: route, options: options });
     lastRoute = new String(currentRoute);
     _utils.clearNode(parent);
-    if (routes[route]) return routes[route](parent);
+    if (routes[route]) return routes[route](parent, options);
     return routes.notFound(parent);
   }
 
@@ -136,8 +248,8 @@
       if (!currentUser) {
         return goto(parent, 'login');
       }
-      var lastUserRoute = _utils.store.get('lastRoute');
-      return goto(parent, lastUserRoute || 'index');
+      var lastUserRoute = _utils.store.get('lastRoute') || {};
+      return goto(parent, lastUserRoute.path || 'index', lastUserRoute.options);
     }
   };
 
