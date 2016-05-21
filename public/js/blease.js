@@ -31,7 +31,7 @@
       _utils.ajaxPost(form, {}, function(res) {
         if (res && res.ok) {
           _utils.store.set('user', res.user);
-          goto(parent, 'index');
+          blease.start(parent);
         } else {
           _utils.store.remove('user');
           _utils.setClass(form, 'has-error');
@@ -187,7 +187,7 @@
     group.appendChild(_utils.create('label', { for: options.name }, options.label));
     group.appendChild(_utils.create(
       'input' || options.inputElement,
-      { name: options.name, class: 'form-control', id: options.name, placeholder: options.placeholder, type: options.type || 'text', required: "required", value: options.value || ''})
+      { name: options.name, class: 'form-control', id: options.name, placeholder: options.placeholder, type: options.type || 'text', required: "required", value: options.value || '', autocomplete: 'false'})
     );
     return group;
   }
@@ -404,18 +404,82 @@
     parent.appendChild(panel);
   }
 
+  function buildUsersList(parent) {
+    var panel = createChild(parent, 'div', {class: 'panel panel-primary'});
+    var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
+    panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, 'Blease - Users'));
+    var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
+    var btnGroup = createChild(panelBody, 'div', {class: 'btn-group'});
+    var createBtn = createChild(btnGroup, 'button', {class: 'btn btn-success'}, 'Create new user');
+    createBtn.onclick = navigationButtonOnClick(parent, 'userCreate');
+    var tableHeader = {
+      _id: { name: 'ID' },
+      name: { name: 'Name' },
+      created: { name: 'Created', delegate: function(item) {
+        return document.createTextNode(moment(item.created).fromNow());
+      } },
+      firstName: { name: 'First name' },
+      lastName: { name: 'Last name' },
+      options: { name: 'Options', delegate: function(item) {
+        var gr = _utils.create('div', {class: 'btn-group'});
+        createChild(gr, 'button', {class: 'btn btn-sm btn-default'}, 'Edit');
+        createChild(gr, 'button', {class: 'btn btn-sm btn-danger'}, 'Remove');
+        return gr;
+      } }
+    }
+    var table = _utils.createTable({class: 'table table-bordered'}, tableHeader);
+    panel.appendChild(table);
+    _utils.sendRpc('user.list', {}, function(res) {
+      _utils.addTableData(table, tableHeader, Array.isArray(res) ? res : [res], {});
+    });
+  }
+
+  function buildUserCreateForm(parent, options) {
+    options = options || {};
+    var panel = createChild(parent, 'div', {class: 'panel panel-primary'});
+    var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
+    panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, 'Blease - Create new user'));
+    var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
+    var form = createChild(panelBody, 'form', {action: 'user.add', class: 'form', autocomplete: 'false'});
+    createChild(form , 'h3', {}, 'New account');
+    var nameInput = form.appendChild(createFormGroup({name: 'name', label: 'User name', placeholder: 'User name', value: options.name ? options.name : null}));
+    var fistNameInput = form.appendChild(createFormGroup({name: 'firstName', label: 'First name', placeholder: 'First name', value: options.firstName ? options.firstName : null}));
+    var lastNameInput = form.appendChild(createFormGroup({name: 'lastName', label: 'Last name', placeholder: 'Last name', value: options.lastName ? options.lastName : null}));
+    var pw1 = form.appendChild(createFormGroup({name: 'password', label: 'Password', type: 'password', value: '', placeholder: ''}));
+    var pw2 = form.appendChild(createFormGroup({name: 'password2', label: 'Retype Password', type: 'password', value: '', placeholder: ''}));
+    form.appendChild(createFormGroup({name: 'isAdmin', label: 'Admin user', type: 'checkbox', value: '', placeholder: ''}));
+    var footer = createChild(panel, 'div', {class: 'panel-footer'});
+    createChild(footer, 'button', {class: 'btn btn-default'}, 'Back');
+    createChild(footer, 'button', {class: 'btn btn-success'}, 'Save').onclick = function() {
+      if (!nameInput.querySelector('input').value) _utils.setClass(nameInput, 'has-error');
+      if (pw1.querySelector('input').value != pw2.querySelector('input').value) {
+        _utils.setClass(pw1, 'has-error');
+        _utils.setClass(pw2, 'has-error');
+      }
+      if (form.querySelector('.has-error')) return false;
+      onSaveButtonClick(parent, form, {
+        password2: function() { return undefined; }
+      }, 'users')();
+      return false;
+    }
+  }
+
   var routes = {
     login: buildLoginForm,
     index: buildIndex,
     create: buildCreateForm,
     category: buildCategoryForm,
     project: buildProjectForm,
+    users: buildUsersList,
+    userCreate: buildUserCreateForm,
     notFound: notFound
   }
 
-  function goto(parent, route, options) {
-    _utils.store.set('lastRoute', { path: route, options: options });
-    lastRoute = new String(currentRoute);
+  function goto(parent, route, options, temp) {
+    if (!temp)  {
+      _utils.store.set('lastRoute', { path: route, options: options });
+      lastRoute = new String(currentRoute);
+    }
     _utils.clearNode(parent);
     if (routes[route]) return routes[route](parent, options);
     return routes.notFound(parent);
@@ -433,18 +497,20 @@
     createChild(brand, 'img', {src: '/image/ico.png', alt: 'Blease'});
     var mainNav = createChild(navContainer, 'div', {class: 'collapse navbar-collapse', id: 'main-nav-collapsable'});
     var ul = createChild(mainNav, 'ul', { class: 'nav navbar-nav' });
-    function createNavLink(name, route) {
+    function createNavLink(name, route, icon) {
         var li = createChild(ul, 'li');
         var a = createChild(li, 'a', {href: '#', class: 'navbar-link'})
+        if (icon) createChild(a, 'i', {class: 'glyphicon glyphicon-' + icon}, '&nbsp;');
         createChild(a, 'span', {}, name);
         a.onclick = function() {
           goto(parent, route);
           return false;
         }
     }
-    createNavLink('Requirements', 'index');
-    createNavLink('Fruit Board', 'fruit');
-    createNavLink('Users', 'fruit');
+    createNavLink('Requirements', 'index', 'th-list');
+    createNavLink('Fruit Board', 'fruit', 'apple');
+    createNavLink('Users', 'users', 'user');
+    createNavLink('Settings', 'settings', 'cog');
     var tools = createChild(mainNav, 'ul', {class: 'nav navbar-nav navbar-right'});
     createChild(createChild(tools, 'li'), 'a', {href: '#', class: 'glyphicon glyphicon-user'});
     createChild(createChild(tools, 'li'), 'a', {href: '#'}, _utils.store.get('user').name);
@@ -458,7 +524,7 @@
       }
       var currentUser = _utils.store.get('user');
       if (!currentUser) {
-        return goto(parent, 'login');
+        return goto(parent, 'login', null, true);
       }
       buildMainNavigation(document.querySelector('#app-header'), parent);
       var lastUserRoute = _utils.store.get('lastRoute') || {};
