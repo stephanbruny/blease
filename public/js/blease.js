@@ -443,13 +443,14 @@
     var form = createChild(panelBody, 'form', {action: 'user.add', class: 'form', autocomplete: 'false'});
     createChild(form , 'h3', {}, 'New account');
     var nameInput = form.appendChild(createFormGroup({name: 'name', label: 'User name', placeholder: 'User name', value: options.name ? options.name : null}));
+    var emailInput = form.appendChild(createFormGroup({name: 'email', label: 'E-mail', placeholder: 'name@foo.bar', type: 'email', value: options.email ? options.email : null}));
     var fistNameInput = form.appendChild(createFormGroup({name: 'firstName', label: 'First name', placeholder: 'First name', value: options.firstName ? options.firstName : null}));
     var lastNameInput = form.appendChild(createFormGroup({name: 'lastName', label: 'Last name', placeholder: 'Last name', value: options.lastName ? options.lastName : null}));
     var pw1 = form.appendChild(createFormGroup({name: 'password', label: 'Password', type: 'password', value: '', placeholder: ''}));
     var pw2 = form.appendChild(createFormGroup({name: 'password2', label: 'Retype Password', type: 'password', value: '', placeholder: ''}));
     form.appendChild(createFormGroup({name: 'isAdmin', label: 'Admin user', type: 'checkbox', value: '', placeholder: ''}));
     var footer = createChild(panel, 'div', {class: 'panel-footer'});
-    createChild(footer, 'button', {class: 'btn btn-default'}, 'Back');
+    createChild(footer, 'button', {class: 'btn btn-default'}, 'Back').onclick = function() { goto(parent, 'users'); return false; };
     createChild(footer, 'button', {class: 'btn btn-success'}, 'Save').onclick = function() {
       if (!nameInput.querySelector('input').value) _utils.setClass(nameInput, 'has-error');
       if (pw1.querySelector('input').value != pw2.querySelector('input').value) {
