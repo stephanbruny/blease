@@ -117,13 +117,13 @@
     }
   }
 
-  function addTableData(table, headDelegate, model) {
+  function addTableData(table, headDelegate, model, data) {
     var tbody = table.querySelector('tbody');
     for (var i = 0; i < model.length; i++) {
       var tr = create('tr');
       for (var key in headDelegate) {
         var td = create('td');
-        td.appendChild(headDelegate[key].delegate(model[i]));
+        td.appendChild(headDelegate[key].delegate(model[i], data));
         tr.appendChild(td);
       }
       tbody.appendChild(tr);

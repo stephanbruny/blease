@@ -64,6 +64,10 @@
     }
   }
 
+  function loadCategories(cb) {
+    _utils.sendRpc('category.list', {}, cb);
+  }
+
   var buildIndex = function(parent) {
     var panel = _utils.create('div', {class: 'panel panel-primary'});
     var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
@@ -79,8 +83,24 @@
     var tableHeader = {
       _id: { name: 'ID' },
       title: { name: 'Title' },
+      category: { name: 'Category', delegate: function(item, data) {
+        var result = ' - ';
+        if (item.category) {
+          for (var i = 0; i < data.categories.length; i++) {
+            if (data.categories[i]._id === item.category) {
+              result = data.categories[i].title; break;
+            }
+          }
+        }
+        return _utils.create('span', {class: 'center-block text-center'}, result);
+      }},
       crated: { name: "Created", delegate: function(item) {
-        return document.createTextNode(item.created.toLocaleString())
+        return document.createTextNode(moment(item.created).fromNow());
+      } },
+      modified: { name: "Modified", delegate: function(item) {
+        return item.modified ?
+          document.createTextNode(moment(item.modified).fromNow())
+          : _utils.create('span', {class: 'center-block text-center'}, ' - ');
       } },
       tests: { name: 'Tests', delegate: function(item) {
         return document.createTextNode((item.tests ? item.tests.length : 0).toString());
@@ -131,9 +151,11 @@
       }}
     };
     var table = _utils.createTable({class: 'table'}, tableHeader);
-    _utils.sendRpc('requirement.list', {}, function(res) {
-      _utils.addTableData(table, tableHeader, res);
-    });
+    loadCategories(function(categories) {
+      _utils.sendRpc('requirement.list', {}, function(res) {
+        _utils.addTableData(table, tableHeader, res, { categories: categories });
+      });
+    })
     panel.appendChild(table);
     parent.appendChild(panel);
   }
@@ -242,7 +264,7 @@
     var categoryButtonText = categoryButton.appendChild(_utils.create('span', {}, options.category || 'Choose category'));
     var categoryDropDown = buttonGroup.appendChild(_utils.create('ul', {class: 'dropdown-menu'}));
     categoryButton.appendChild(_utils.create('span', { class: 'caret' }));
-    _utils.sendRpc('category.list', {}, function(res) {
+    loadCategories(function(res) {
       for (var i = 0; i < res.length; i++) {
         var li = categoryDropDown.appendChild(_utils.create('li', {}));
         var cat = li.appendChild(_utils.create('a', {}, res[i].title));
