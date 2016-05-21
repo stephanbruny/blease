@@ -118,7 +118,9 @@
           : _utils.create('span', {class: 'center-block text-center'}, ' - ');
       } },
       tests: { name: 'Tests', delegate: function(item) {
-        return document.createTextNode((item.tests ? item.tests.length : 0).toString());
+        var el = _utils.create('div', {class: 'center-block text-center'});
+        createChild(el, 'span', {class: 'text-primary'}, (item.tests ? item.tests.length : 0).toString())
+        return el;
       } },
       complexity: { name: 'Complexity', delegate: function(item) {
         var val = 0;
