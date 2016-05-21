@@ -415,6 +415,36 @@
     return routes.notFound(parent);
   }
 
+  function createChild(parent, tag, attributes, text) {
+    return parent.appendChild(_utils.create(tag, attributes, text));
+  }
+
+  function buildMainNavigation(header, parent) {
+    var nav = header.appendChild(_utils.create('nav', {class: 'navbar navbar-default'}));
+    var navContainer = nav.appendChild(_utils.create('div', {class: 'container-fluid'}))
+    var navHeader = createChild(navContainer, 'div', {class: 'navbar-header'});
+    var brand = createChild(navHeader, 'a', {class: 'navbar-brand', href: '#'});
+    createChild(brand, 'img', {src: '/image/ico.png', alt: 'Blease'});
+    var mainNav = createChild(navContainer, 'div', {class: 'collapse navbar-collapse', id: 'main-nav-collapsable'});
+    var ul = createChild(mainNav, 'ul', { class: 'nav navbar-nav' });
+    function createNavLink(name, route) {
+        var li = createChild(ul, 'li');
+        var a = createChild(li, 'a', {href: '#'})
+        createChild(a, 'span', {}, name);
+        a.onclick = function() {
+          goto(parent, route);
+          return false;
+        }
+    }
+    createNavLink('Requirements', 'index');
+    createNavLink('Fruit Board', 'fruit');
+    createNavLink('Users', 'fruit');
+    var tools = createChild(mainNav, 'ul', {class: 'nav navbar-nav navbar-right'});
+    createChild(createChild(tools, 'li'), 'a', {href: '#', class: 'glyphicon glyphicon-user'});
+    createChild(createChild(tools, 'li'), 'a', {href: '#'}, _utils.store.get('user').name);
+    createChild(createChild(tools, 'li'), 'a', {href: '#', class: 'glyphicon glyphicon-off'});
+  }
+
   root.blease = {
     start: function(parent) {
       if (!document.cookie) {
@@ -424,6 +454,7 @@
       if (!currentUser) {
         return goto(parent, 'login');
       }
+      buildMainNavigation(document.querySelector('#app-header'), parent);
       var lastUserRoute = _utils.store.get('lastRoute') || {};
       return goto(parent, lastUserRoute.path || 'index', lastUserRoute.options);
     }
