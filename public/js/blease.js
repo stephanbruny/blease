@@ -128,7 +128,13 @@
           }
         }
         var el = _utils.create('div', {class: 'center-block text-center'});
-        el.appendChild(_utils.create('span', {class: 'badge'}, val));
+        var severity =
+          val < 5 ? 'label-success' :
+          val < 10 ? 'label-primary' :
+          val < 15 ? 'label-warning' :
+          'label-danger';
+
+        el.appendChild(_utils.create('span', {class: 'label ' + severity}, val));
         return el;
       }},
       status: {name: 'Status', delegate: function(item) {
@@ -429,7 +435,7 @@
     var ul = createChild(mainNav, 'ul', { class: 'nav navbar-nav' });
     function createNavLink(name, route) {
         var li = createChild(ul, 'li');
-        var a = createChild(li, 'a', {href: '#'})
+        var a = createChild(li, 'a', {href: '#', class: 'navbar-link'})
         createChild(a, 'span', {}, name);
         a.onclick = function() {
           goto(parent, route);
