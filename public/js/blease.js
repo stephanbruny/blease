@@ -68,20 +68,35 @@
     _utils.sendRpc('category.list', {}, cb);
   }
 
+  function loadProjects(cb) {
+    _utils.sendRpc('project.list', {}, cb);
+  }
+
   var buildIndex = function(parent) {
     var panel = _utils.create('div', {class: 'panel panel-primary'});
     var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
     panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, 'Blease - Requirements'));
     var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
     var btnGroup = panelBody.appendChild(_utils.create('div', {class: 'btn-group'}));
-    var btn = btnGroup.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Create Requirement'));
+    var btn = btnGroup.appendChild(_utils.create('button', {class: 'btn btn-success'}, 'Create Requirement'));
     btn.onclick = navigationButtonOnClick(parent, 'create');
     var btnCategory = btnGroup.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Create Category'));
     btnCategory.onclick = navigationButtonOnClick(parent, 'category');
-    var btnProject= btnGroup.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Create Project'));
+    var btnProject= btnGroup.appendChild(_utils.create('button', {class: 'btn btn-info'}, 'Create Project'));
     btnProject.onclick = navigationButtonOnClick(parent, 'project');
     var tableHeader = {
       _id: { name: 'ID' },
+      project: { name: 'Project', delegate: function(item, data) {
+        var result = ' - ';
+        if (item.project) {
+          for (var i = 0; i < data.projects.length; i++) {
+            if (data.projects[i]._id === item.project) {
+              result = data.projects[i].title; break;
+            }
+          }
+        }
+        return _utils.create('strong', {class: 'center-block text-center text-primary'}, result);
+      }},
       title: { name: 'Title' },
       category: { name: 'Category', delegate: function(item, data) {
         var result = ' - ';
@@ -150,12 +165,13 @@
         return list;
       }}
     };
-    var table = _utils.createTable({class: 'table'}, tableHeader);
+    var table = _utils.createTable({class: 'table table-bordered'}, tableHeader);
+    loadProjects(function(projects) {
     loadCategories(function(categories) {
       _utils.sendRpc('requirement.list', {}, function(res) {
-        _utils.addTableData(table, tableHeader, res, { categories: categories });
+        _utils.addTableData(table, tableHeader, res, { categories: categories, projects: projects });
       });
-    })
+    })});
     panel.appendChild(table);
     parent.appendChild(panel);
   }
@@ -219,6 +235,7 @@
       form.appendChild(_utils.create('input', {type: 'hidden', name: '_id', id: '_id', value: options._id}));
     }
     form.appendChild(_utils.create('input', {type: 'hidden', name: 'status', id: 'status', value: options.status || 'New'}));
+    var projectInput = form.appendChild(_utils.create('input', {type: 'hidden', name: 'project', id: 'project', value: options.project}));
     form.appendChild(_utils.create('h3', {}, 'Info'));
 
     form.appendChild(createFormGroup({name: 'title', label: 'Requirement Title', placeholder: 'Title', value: options.title ? options.title : null}));
@@ -256,14 +273,30 @@
         return false;
       }
     }
+    function onSelectProject(proj) {
+      return function() {
+        projectInput.value = proj._id;
+        projectButtonText.innerHTML = proj.title;
+        return false;
+      }
+    }
     var buttonGroup = form.appendChild(_utils.create('div', {class: 'btn-group'}));
     var categoryButton = buttonGroup.appendChild(_utils.create('button', {
       class: 'btn btn-default dropdown-toggle',
       "data-toggle": "dropdown", "aria-haspopup":"true", "aria-expanded":"false"
     }));
+    categoryButton.appendChild(_utils.create('span', {}, 'Category: '));
     var categoryButtonText = categoryButton.appendChild(_utils.create('span', {}, options.category || 'Choose category'));
     var categoryDropDown = buttonGroup.appendChild(_utils.create('ul', {class: 'dropdown-menu'}));
-    categoryButton.appendChild(_utils.create('span', { class: 'caret' }));
+    var projectButtonGroup = form.appendChild(_utils.create('div', {class: 'btn-group'}));
+    var projectButton = projectButtonGroup.appendChild(_utils.create('button', {
+      class: 'btn btn-info dropdown-toggle',
+      "data-toggle": "dropdown", "aria-haspopup":"true", "aria-expanded":"false"
+    }));
+    projectButton.appendChild(_utils.create('span', {}, 'Project: '));
+    var projectButtonText = projectButton.appendChild(_utils.create('span', {}, options.project || 'Choose project'));
+    var projectDropDown = projectButtonGroup.appendChild(_utils.create('ul', {class: 'dropdown-menu'}));
+    projectButton.appendChild(_utils.create('span', { class: 'caret' }));
     loadCategories(function(res) {
       for (var i = 0; i < res.length; i++) {
         var li = categoryDropDown.appendChild(_utils.create('li', {}));
@@ -272,6 +305,16 @@
           categoryButtonText.innerHTML = res[i].title;
         }
         cat.onclick = onSelectCategory(res[i]);
+      }
+    });
+    loadProjects(function(res) {
+      for (var i = 0; i < res.length; i++) {
+        var li = projectDropDown.appendChild(_utils.create('li', {}));
+        var cat = li.appendChild(_utils.create('a', {}, res[i].title));
+        if (options.project && res[i]._id === options.project) {
+          projectButtonText.innerHTML = res[i].title;
+        }
+        cat.onclick = onSelectProject(res[i]);
       }
     });
     var panelFooter = panel.appendChild(_utils.create('div', {class: 'panel-footer'}));
@@ -320,11 +363,47 @@
     parent.appendChild(panel);
   }
 
+  function buildProjectForm(parent, options) {
+    options = options || {};
+    var panel = _utils.create('div', {class: 'panel panel-primary'});
+    var panelHeading = panel.appendChild(_utils.create('div', {class: 'panel-heading'}));
+    panelHeading.appendChild(_utils.create('h3', {class: 'panel-title'}, !options.title ? 'Blease - Create new Project' : 'Edit Project - ' + options.title));
+    var panelBody = panel.appendChild(_utils.create('div', {class: 'panel-body'}));
+    var form = _utils.create('form', {action: options._id ? 'project.update' : 'project.create', class: 'form'});
+    form.appendChild(createFormGroup({name: 'title', label: 'Project Title', placeholder: 'Title', value: options.title ? options.title : null}));
+    form.appendChild(createFormGroup({name: 'description', label: 'Description', placeholder: 'Description', value: options.description ? options.description : null}));
+    form.appendChild(_utils.create('h4', {}, 'Estimated cost per effort point'));
+    var costGroup = form.appendChild(_utils.create('div', {class: 'input-group'}));
+    var costAddOn = costGroup.appendChild(_utils.create('div', {class: 'input-group-addon'}));
+    costAddOn.appendChild(_utils.create('span', {class: 'glyphicon glyphicon-euro'}));
+    var costInput = costGroup.appendChild(_utils.create('input', { class: 'form-control', id: 'pointCost', name: 'pointCost', type: 'number', step: 0.01 }));
+    // costGroup.appendChild(_utils.create('label', { for: 'pointCost' }, 'Estimated cost per effort point'));
+    var costAddOnBtn = costGroup.appendChild(_utils.create('span', {class: 'input-group-btn'}));
+    var plusButton = costAddOnBtn.appendChild(_utils.create('button', {class: 'btn btn-default'}));
+    plusButton.appendChild(_utils.create('span', {class: 'glyphicon glyphicon-plus-sign'}));
+    var minusButton = costAddOnBtn.appendChild(_utils.create('button', {class: 'btn btn-default'}));
+    minusButton.appendChild(_utils.create('span', {class: 'glyphicon glyphicon-minus-sign'}));
+    plusButton.onclick = function() { costInput.value = (parseFloat(costInput.value || 0) + 1).toFixed(2); return false; };
+    minusButton.onclick = function() { costInput.value = (parseFloat(costInput.value || 0) - 1).toFixed(2); return false; };
+
+    var panelFooter = panel.appendChild(_utils.create('div', {class: 'panel-footer'}));
+    var backBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-default'}, 'Back'));
+    backBtn.onclick = function() {
+      goto(parent, lastRoute);
+      return false;
+    }
+    var saveBtn = panelFooter.appendChild(_utils.create('button', {class: 'btn btn-success'}, 'Save'));
+    saveBtn.onclick = onSaveButtonClick(parent, form, {});
+    panelBody.appendChild(form);
+    parent.appendChild(panel);
+  }
+
   var routes = {
     login: buildLoginForm,
     index: buildIndex,
     create: buildCreateForm,
     category: buildCategoryForm,
+    project: buildProjectForm,
     notFound: notFound
   }
 
