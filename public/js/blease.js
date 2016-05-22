@@ -192,6 +192,14 @@
       });
     })});
     panel.appendChild(table);
+    var footer = createChild(panel, 'div', {class: 'panel-footer clear-fix'});
+    var pagination = createChild(footer, 'nav').appendChild(_utils.create('ul', { class: 'pagination pagination-sm' }));
+    createChild(pagination, 'li')
+      .appendChild(_utils.create('a', {href: '#', 'aria-label': "Previous"}))
+      .appendChild(_utils.create('span', {'aria-hidden': true, class: 'glyphicon glyphicon-backward'}))
+      createChild(pagination, 'li')
+        .appendChild(_utils.create('a', {href: '#', 'aria-label': "Next"}))
+        .appendChild(_utils.create('span', {'aria-hidden': true, class: 'glyphicon glyphicon-forward'}))
     parent.appendChild(panel);
   }
 
