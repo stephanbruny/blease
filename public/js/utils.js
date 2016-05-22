@@ -1,6 +1,8 @@
 (function(root) {
   var rpcId = 0;
 
+  _str = root._str || function(s) { return s; }
+
   function rpcRequest(action, params, callback, onError) {
     var xhr = new XMLHttpRequest();
     onError = onError || function(err) { console.error(err); }

@@ -119,7 +119,18 @@
       } },
       tests: { name: 'Tests', delegate: function(item) {
         var el = _utils.create('div', {class: 'center-block text-center'});
-        createChild(el, 'span', {class: 'text-primary'}, (item.tests ? item.tests.length : 0).toString())
+        createChild(el, 'span', {class: 'text-default'}, (item.tests ? item.tests.length : 0).toString())
+        return el;
+      } },
+      priority: { name: 'Priority', delegate: function(item) {
+        var prio = item.priority || 0;
+        var severity =
+          prio < 0 ? 'text-success' :
+          prio < 5 ? 'text-primary' :
+          prio < 10 ? 'text-warning' :
+          'text-danger';
+        var el = _utils.create('div', {class: 'center-block text-center'});
+        createChild(el, 'span', {class: severity}, (item.priority ? item.priority : 0).toString())
         return el;
       } },
       complexity: { name: 'Complexity', delegate: function(item) {
@@ -248,9 +259,21 @@
 
     form.appendChild(createFormGroup({name: 'title', label: 'Requirement Title', placeholder: 'Title', value: options.title ? options.title : null}));
     form.appendChild(createFormGroup({name: 'details', label: 'Details', placeholder: 'Details...', value: options.details ? options.details : null}));
+
+    var prioGroup = createChild(form, 'div', {class: 'form-group'});
+    createChild(prioGroup, 'label', {for: 'priority'}, 'Priority');
+    var prioEl = createChild(prioGroup, 'div', {class: 'input-group'});
+    var prioInput = createChild(prioEl, 'input', {class: 'form-control', type: 'number', name: 'priority', id: 'priority', value: 1});
+    var prioBtns = createChild(prioEl, 'span', {class: 'input-group-btn'});
+    var prioPlus = createChild(prioBtns, 'button', {class: 'btn btn-default'});
+    createChild(prioPlus, 'span', { class: 'glyphicon glyphicon-plus-sign' });
+    var prioMinus = createChild(prioBtns, 'button', {class: 'btn btn-default'});
+    createChild(prioMinus, 'span', { class: 'glyphicon glyphicon-minus-sign' });
+    prioPlus.onclick = function() { prioInput.value = parseInt(prioInput.value) + 1; return false; };
+    prioMinus.onclick = function() { prioInput.value = parseInt(prioInput.value) - 1; return false; };
+
     form.appendChild(_utils.create('h3', {}, 'Things'));
     var thingList = form.appendChild(_utils.create('div', {class: 'form-group'}));
-
 
     panelBody.appendChild(form);
     form.appendChild(_utils.create('h5', {}, 'Add new thing'))
@@ -494,10 +517,21 @@
 
   function buildMainNavigation(header, parent) {
     var nav = header.appendChild(_utils.create('nav', {class: 'navbar navbar-default'}));
+    var brandModalContent = _utils.create('div', {class: 'center-block text-center'});
+    createChild(brandModalContent, 'img', { src: '/image/prism.png', alt: "Blease"});
+    createChild(brandModalContent, 'h3',  { class: 'text-primary' }, 'Blease');
+    createChild(brandModalContent, 'p',  { class: 'text-default' }, 'Behavioral Requirement Management');
+    createChild(brandModalContent, 'p',  { class: 'text-default' }, '(C) 2016 - Stephan Bruny');
+    createChild(brandModalContent, 'p',  { class: 'text-default' }, 'Dual licensed under GPLv3 and commercial license');
+    createChild(brandModalContent, 'br', {});
+    var brandModal = _utils.createModal(brandModalContent, 'Blease');
     var navContainer = nav.appendChild(_utils.create('div', {class: 'container-fluid'}))
     var navHeader = createChild(navContainer, 'div', {class: 'navbar-header'});
     var brand = createChild(navHeader, 'a', {class: 'navbar-brand', href: '#'});
-    createChild(brand, 'img', {src: '/image/ico.png', alt: 'Blease'});
+    brand.onclick = function() {
+      _utils.show(brandModal)
+    }
+    createChild(brand, 'img', {src: '/image/prism.png', alt: 'Blease', width: 32, height: 32});
     var mainNav = createChild(navContainer, 'div', {class: 'collapse navbar-collapse', id: 'main-nav-collapsable'});
     var ul = createChild(mainNav, 'ul', { class: 'nav navbar-nav' });
     function createNavLink(name, route, icon) {
