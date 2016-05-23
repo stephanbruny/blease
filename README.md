@@ -43,7 +43,7 @@ Blease is written in JavaScript based on NodeJS.
 
 ## Core
 
-Blease-Core is a simple RPC-Server utilizing EJDB as storage layer.
+Blease-Core is a simple RPC-Server utilizing nedb (https://github.com/louischatriot/nedb) as storage layer.
 The core could be seen as the "backend" of Blease. 
 It's written in ECMAScript 6th Edition.
 
